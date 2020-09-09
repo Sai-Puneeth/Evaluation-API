@@ -1,3 +1,5 @@
+const db = require('../util/database.js');
+
 exports.getQuestions = (req, res, next) => {
     let questions= [];
 
@@ -5,12 +7,7 @@ exports.getQuestions = (req, res, next) => {
       question: 'Test Question',
       description: 'Help Text, if any',
       type: 'multiselect',
-      choices: [
-        'Option1',
-        'Option2',
-        'Option3',
-        'Option4'
-      ],
+      choices: [],
       answers: [
         'Option1',
         'Option2'
@@ -18,11 +15,23 @@ exports.getQuestions = (req, res, next) => {
       level: 1
     }
 
-    another.description = 'updated description'
+    db.execute('SELECT * FROM questions')
+    .then(([rows]) =>{  
+      let data = rows[0];
+      another.question = data.question;
+      another.description = data.description;
+      another.type = data.type;
+      another.choices.push(data.option1);
+      another.choices.push(data.option2);
+      another.choices.push(data.option3);
+      another.choices.push(data.option4);
+      another.level = data.level;
 
-    questions.push(another);
-  
-  res.status(200).json(questions);
+      res.status(200).json(another);
+    })
+    .catch(err => {
+      console.log(err);
+    });
 };
 
 exports.postResult = (req, res, next) => {
