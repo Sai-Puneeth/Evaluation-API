@@ -1,8 +1,7 @@
 const db = require('../util/database.js');
 
-var questions =[];
-
 exports.getQuestions = (req, res, next) => {
+  var questions =[];
   db.execute('SELECT * FROM questions ORDER BY RAND()')
     .then(([rows]) =>{
 
@@ -29,21 +28,18 @@ exports.getQuestions = (req, res, next) => {
         if(counter2+counter3+counter1 == 10){ break; }
       }
       questions.sort((a, b) => (a.level > b.level) ? 1 : -1);
-  })
-  .catch(err => {
-    console.log(err);
-  });
-
-  db.execute('SELECT * FROM choices').then(([rows]) =>{
-    for(let i=0; i<questions.length; i++){
-      for(let j=0; j<rows.length ;j++){
-        if(questions[i].qid == rows[j].qid){
-          questions[i].options.push(rows[j].choice);
+      console.log(questions.length);
+  }).then(() =>{
+    db.execute('SELECT * FROM choices').then(([rows]) =>{
+      for(let i=0; i<questions.length; i++){
+        for(let j=0; j<rows.length ;j++){
+          if(questions[i].qid == rows[j].qid){
+            questions[i].options.push(rows[j].choice);
+          }
         }
       }
-    }
-    console.log(questions.length);
     res.status(200).json(questions);
+    })
   })
 };
 
