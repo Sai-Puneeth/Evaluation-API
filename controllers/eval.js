@@ -1,37 +1,50 @@
 const db = require('../util/database.js');
 
+var questions =[];
+
 exports.getQuestions = (req, res, next) => {
-    let questions= [];
+  db.execute('SELECT * FROM questions ORDER BY RAND()')
+    .then(([rows]) =>{
 
-    let another = {
-      question: 'Test Question',
-      description: 'Help Text, if any',
-      type: 'multiselect',
-      choices: [],
-      answers: [
-        'Option1',
-        'Option2'
-      ],
-      level: 1
+      let counter1 = 0;
+      let counter2 = 0;
+      let counter3 = 0;
+
+      for(let i=0 ;i<rows.length ;i++ ){
+        if(rows[i].level==1 && counter1<=2){
+          rows[i].options = [];
+          questions.push(rows[i]);
+          counter1++;
+        }
+        if(rows[i].level==2 && counter2<=2){
+          rows[i].options = [];
+          questions.push(rows[i]);
+          counter2++;
+        }
+        if(rows[i].level==3 && counter3<=3){
+          rows[i].options = [];
+          questions.push(rows[i]);
+          counter3++;
+        }
+        if(counter2+counter3+counter1 == 10){ break; }
+      }
+      questions.sort((a, b) => (a.level > b.level) ? 1 : -1);
+  })
+  .catch(err => {
+    console.log(err);
+  });
+
+  db.execute('SELECT * FROM choices').then(([rows]) =>{
+    for(let i=0; i<questions.length; i++){
+      for(let j=0; j<rows.length ;j++){
+        if(questions[i].qid == rows[j].qid){
+          questions[i].options.push(rows[j].choice);
+        }
+      }
     }
-
-    db.execute('SELECT * FROM questions')
-    .then(([rows]) =>{  
-      let data = rows[0];
-      another.question = data.question;
-      another.description = data.description;
-      another.type = data.type;
-      another.choices.push(data.option1);
-      another.choices.push(data.option2);
-      another.choices.push(data.option3);
-      another.choices.push(data.option4);
-      another.level = data.level;
-
-      res.status(200).json(another);
-    })
-    .catch(err => {
-      console.log(err);
-    });
+    console.log(questions.length);
+    res.status(200).json(questions);
+  })
 };
 
 exports.postResult = (req, res, next) => {
