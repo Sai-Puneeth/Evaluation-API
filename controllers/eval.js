@@ -1,8 +1,12 @@
 const db = require('../util/database.js');
+const url = require('url');
+
 
 exports.getQuestions = (req, res, next) => {
   var questions =[];
-  db.execute('SELECT * FROM questions ORDER BY RAND()')
+  var q = url.parse(req.url,true);
+  const group = q.query.group;
+  db.execute(`SELECT * FROM questions ORDER BY RAND()`)
     .then(([rows]) =>{
 
       let counter1 = 0;
@@ -28,13 +32,15 @@ exports.getQuestions = (req, res, next) => {
         if(counter2+counter3+counter1 == 10){ break; }
       }
       questions.sort((a, b) => (a.level > b.level) ? 1 : -1);
-      console.log(questions.length);
   }).then(() =>{
     db.execute('SELECT * FROM choices').then(([rows]) =>{
       for(let i=0; i<questions.length; i++){
         for(let j=0; j<rows.length ;j++){
           if(questions[i].qid == rows[j].qid){
-            questions[i].options.push(rows[j].choice);
+            let temp = { choice:"", ansid: 0 }
+            temp.choice = rows[j].choice;
+            temp.ansid = rows[j].ansid;
+            questions[i].options.push(temp);
           }
         }
       }
@@ -43,13 +49,44 @@ exports.getQuestions = (req, res, next) => {
   })
 };
 
+
 exports.postResult = (req, res, next) => {
-  const uid = req.body.uid;
-  const qid = req.body.qid; //array of question ids
+
+  var qid=req.body.qid;
+  var answer=req.body.answers;
+  var uid = req.body.uid;
+
+  var score = 0;
+    
+  for(let i=0;i<answer.length;i++){
+    for(let j=0;j<answer[i].length;j++){
+      db.execute('INSERT INTO user ( `uid`, `qid` , `useranswer`) VALUES (?,?,?)',
+        [uid,qid[i],answer[i][j]]
+      );
+    }
+  }
   
-  // Create post in db
-  res.status(201).json({
-    message: 'Post created successfully!',
-    post: { id: new Date().toISOString(), uid: uid, qid: qid }
+  db.execute('SELECT * FROM correct_choices')
+  .then(([rows])=>{
+    for(let i=0;i<qid.length;i++){
+      var k=0;
+      for(let j=0 ;j<rows.length ;j++){
+        if(qid[i]==rows[j].qid){   
+          for(let l=0;l<answer[i].length;l++){
+            if(answer[i][l]==rows[j].correct)
+            k++;
+          }
+        }
+      }
+      if(k==answer[i].length)
+      score++;  
+    }
+    console.log(score);
+  })
+  .then(() => {
+    res.status(201).json({
+      message: 'Answers Stored Successfully!',
+      post: {uid: uid, qid: qid, score: score }
+    })
   });
 };
